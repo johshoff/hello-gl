@@ -13,21 +13,24 @@
  * Global data used by our render callback:
  */
 
+#define MAXBALLS 10
+
 static struct {
     GLuint vertex_buffer, element_buffer;
     GLuint textures[2];
     GLuint vertex_shader, fragment_shader, program;
     
     struct {
-        GLint fade_factor;
-        GLint textures[2];
+        GLint ball[MAXBALLS];
+        GLint numballs;
+        GLfloat time;
     } uniforms;
 
     struct {
         GLint position;
     } attributes;
 
-    GLfloat fade_factor;
+    GLfloat local_time;
 } g_resources;
 
 /*
@@ -43,32 +46,6 @@ static GLuint make_buffer(
     glBindBuffer(target, buffer);
     glBufferData(target, buffer_size, buffer_data, GL_STATIC_DRAW);
     return buffer;
-}
-
-static GLuint make_texture(const char *filename)
-{
-    int width, height;
-    void *pixels = read_tga(filename, &width, &height);
-    GLuint texture;
-
-    if (!pixels)
-        return 0;
-
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S,     GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T,     GL_CLAMP_TO_EDGE);
-    glTexImage2D(
-        GL_TEXTURE_2D, 0,           /* target, level */
-        GL_RGB8,                    /* internal format */
-        width, height, 0,           /* width, height, border */
-        GL_BGR, GL_UNSIGNED_BYTE,   /* external format, type */
-        pixels                      /* pixels */
-    );
-    free(pixels);
-    return texture;
 }
 
 static void show_info_log(
@@ -159,12 +136,6 @@ static int make_resources(void)
         sizeof(g_element_buffer_data)
     );
 
-    g_resources.textures[0] = make_texture("hello1.tga");
-    g_resources.textures[1] = make_texture("hello2.tga");
-
-    if (g_resources.textures[0] == 0 || g_resources.textures[1] == 0)
-        return 0;
-
     g_resources.vertex_shader = make_shader(
         GL_VERTEX_SHADER,
         "hello-gl.v.glsl"
@@ -183,12 +154,17 @@ static int make_resources(void)
     if (g_resources.program == 0)
         return 0;
 
-    g_resources.uniforms.fade_factor
-        = glGetUniformLocation(g_resources.program, "fade_factor");
-    g_resources.uniforms.textures[0]
-        = glGetUniformLocation(g_resources.program, "textures[0]");
-    g_resources.uniforms.textures[1]
-        = glGetUniformLocation(g_resources.program, "textures[1]");
+    g_resources.uniforms.numballs
+        = glGetUniformLocation(g_resources.program, "numballs");
+    g_resources.uniforms.time
+        = glGetUniformLocation(g_resources.program, "time");
+    int i;
+    for (i = 0; i < MAXBALLS; ++i)
+    {
+        char buf[25];
+        sprintf(buf, "ball[%d]", i);
+        g_resources.uniforms.ball[i] = glGetUniformLocation(g_resources.program, buf);
+    }
 
     g_resources.attributes.position
         = glGetAttribLocation(g_resources.program, "position");
@@ -202,24 +178,23 @@ static int make_resources(void)
 static void update_fade_factor(void)
 {
     int milliseconds = glutGet(GLUT_ELAPSED_TIME);
-    g_resources.fade_factor = sinf((float)milliseconds * 0.001f) * 0.5f + 0.5f;
+    g_resources.local_time = (float)milliseconds;
     glutPostRedisplay();
 }
 
 static void render(void)
 {
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
     glUseProgram(g_resources.program);
 
-    glUniform1f(g_resources.uniforms.fade_factor, g_resources.fade_factor);
+    glUniform1f(g_resources.uniforms.time, g_resources.local_time);
+    glUniform1i(g_resources.uniforms.numballs, 4);
+    glUniform4f(g_resources.uniforms.ball[0], 1.0,  1.0, 1.0, 1.2);
+    glUniform4f(g_resources.uniforms.ball[1], 0.4,  0.7, 0.5, 1.1);
+    glUniform4f(g_resources.uniforms.ball[2], 0.2,  0.1, 1.2, 0.9);
+    glUniform4f(g_resources.uniforms.ball[3], 0.8, -0.4, 1.1, 1.5);
     
-    glActiveTexture(GL_TEXTURE0);
-    glBindTexture(GL_TEXTURE_2D, g_resources.textures[0]);
-    glUniform1i(g_resources.uniforms.textures[0], 0);
-
-    glActiveTexture(GL_TEXTURE1);
-    glBindTexture(GL_TEXTURE_2D, g_resources.textures[1]);
-    glUniform1i(g_resources.uniforms.textures[1], 1);
-
     glBindBuffer(GL_ARRAY_BUFFER, g_resources.vertex_buffer);
     glVertexAttribPointer(
         g_resources.attributes.position,  /* attribute */
@@ -250,7 +225,7 @@ int main(int argc, char** argv)
 {
     glutInit(&argc, argv);
     glutInitDisplayMode(GLUT_RGB | GLUT_DOUBLE);
-    glutInitWindowSize(400, 300);
+    glutInitWindowSize(600, 600);
     glutCreateWindow("Hello World");
     glutIdleFunc(&update_fade_factor);
     glutDisplayFunc(&render);
