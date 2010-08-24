@@ -189,11 +189,12 @@ static void render(void)
     glUseProgram(g_resources.program);
 
     glUniform1f(g_resources.uniforms.time, g_resources.local_time);
-    glUniform1i(g_resources.uniforms.numballs, 4);
+    glUniform1i(g_resources.uniforms.numballs, 5);
     glUniform4f(g_resources.uniforms.ball[0], 1.0,  1.0, 1.0, 1.2);
     glUniform4f(g_resources.uniforms.ball[1], 0.4,  0.7, 0.5, 1.1);
     glUniform4f(g_resources.uniforms.ball[2], 0.2,  0.1, 1.2, 0.9);
     glUniform4f(g_resources.uniforms.ball[3], 0.8, -0.4, 1.1, 1.5);
+    glUniform4f(g_resources.uniforms.ball[4], 0.4, -0.9, 1.1, 0.8);
     
     glBindBuffer(GL_ARRAY_BUFFER, g_resources.vertex_buffer);
     glVertexAttribPointer(
