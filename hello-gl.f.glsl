@@ -18,6 +18,6 @@ void main()
         vec2 pos = vec2(sin(p * ball[i].z) * ball[i].x, cos(p * ball[i].a) * ball[i].y);
         d += sqr(0.1 / distance(texcoord, pos) + 0.0001);
     }
-    d = smoothstep(0.1, 0.6, abs(0.5 - smoothstep(0.9, 1.0, d)));
-    gl_FragColor = vec4(d, d, d, 1.0);
+    d = 1.0 - smoothstep(0.1, 0.6, abs(0.5 - smoothstep(0.9, 1.0, d)));
+    gl_FragColor = vec4(d, d/2.0, d/2.5, 1.0);
 }
